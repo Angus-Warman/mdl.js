@@ -16,10 +16,16 @@ class Store {
     #items = new Map();
     /** @type {Set<StoreListener>} */
     #listeners = new Set();
+    /** @type {any} */
+    #parent;
     isStore = true;
 
-    /** @param {T[]} originals */
-    constructor(originals = []) {
+    /**
+     * @param {T[]} originals
+     * @param {any} [parent] item that owns this store, exposed as $parent on its items
+     */
+    constructor(originals = [], parent = undefined) {
+        this.#parent = parent;
         for (const original of originals) this.add(original);
     }
 
@@ -75,22 +81,35 @@ class Store {
     #reactive(original) {
         /** @type {any} */
         const target = { ...original };
-        for (const key in target) target[key] = wrap(target[key]);
 
         /** @type {T} */
         const proxy = new Proxy(target, {
+            get: (t, key, receiver) => {
+                if (key === "$parent") return this.#parent;
+                return Reflect.get(t, key, receiver);
+            },
+            has: (t, key) => {
+                if (key === "$parent") return this.#parent !== undefined;
+                return Reflect.has(t, key);
+            },
             set: (t, key, value, receiver) => {
-                const ok = Reflect.set(t, key, wrap(value), receiver);
+                const ok = Reflect.set(t, key, wrap(value, proxy), receiver);
                 if (typeof key === "string") this.#emit("change", proxy, key);
                 return ok;
             },
         });
+
+        for (const key in target) target[key] = wrap(target[key], proxy);
         return proxy;
     }
 }
 
-/** Arrays become child stores; everything else passes through. */
-const wrap = (/** @type {any} */ value) => (Array.isArray(value) ? new Store(value) : value);
+/**
+ * Arrays become child stores; everything else passes through.
+ * @param {any} value
+ * @param {any} [parent]
+ */
+const wrap = (value, parent) => (Array.isArray(value) ? new Store(value, parent) : value);
 
 /**
  * @template {Item} T
@@ -101,6 +120,47 @@ const store = (items) => {
     const s = new Store(items);
     return s;
 };
+
+/**
+ * Read a property path from an item, logging when part of it is missing.
+ * @param {any} item
+ * @param {string} prop
+ */
+function getProp(item, prop) {
+    let value = item;
+    for (const part of prop.split(".")) {
+        if (value == null || !(part in Object(value))) {
+            console.error(`[mdl] Missing property "${prop}"`, item);
+            return undefined;
+        }
+        value = value[part];
+    }
+    return value;
+}
+
+/**
+ * Write a property path on an item, logging when part of it is missing.
+ * @param {any} item
+ * @param {string} prop
+ * @param {any} value
+ */
+function setProp(item, prop, value) {
+    const parts = prop.split(".");
+    const last = /** @type {string} */ (parts.pop());
+    let target = item;
+    for (const part of parts) {
+        if (target == null || !(part in Object(target))) {
+            console.error(`[mdl] Missing property "${prop}"`, item);
+            return;
+        }
+        target = target[part];
+    }
+    if (target == null || !(last in Object(target))) {
+        console.error(`[mdl] Missing property "${prop}"`, item);
+        return;
+    }
+    target[last] = value;
+}
 
 /**
  * Wire up [mdl] elements in a fragment to an item.
@@ -137,12 +197,12 @@ function bindAll(root, item, store) {
  */
 function bindCheckbox(input, item, prop) {
     const update = () => {
-        input.checked = !!item[prop];
+        input.checked = !!getProp(item, prop);
     };
 
     update();
     input.addEventListener("change", () => {
-        item[prop] = input.checked;
+        setProp(item, prop, input.checked);
     });
     return { prop, update };
 }
@@ -156,13 +216,13 @@ function bindInput(input, item, prop) {
     const isNumber = input.type === "number";
 
     const update = () => {
-        const value = String(item[prop] ?? "");
+        const value = String(getProp(item, prop) ?? "");
         if (input.value !== value) input.value = value;
     };
 
     update();
     input.addEventListener("input", () => {
-        item[prop] = isNumber ? Number(input.value) : input.value;
+        setProp(item, prop, isNumber ? Number(input.value) : input.value);
     });
     return { prop, update };
 }
@@ -174,13 +234,13 @@ function bindInput(input, item, prop) {
  */
 function bindValue(input, item, prop) {
     const update = () => {
-        const value = String(item[prop] ?? "");
+        const value = String(getProp(item, prop) ?? "");
         if (input.value !== value) input.value = value;
     };
 
     update();
     input.addEventListener("input", () => {
-        item[prop] = input.value;
+        setProp(item, prop, input.value);
     });
     return { prop, update };
 }
@@ -192,7 +252,7 @@ function bindValue(input, item, prop) {
  */
 function bindText(el, item, prop) {
     const update = () => {
-        el.textContent = item[prop] ?? "";
+        el.textContent = getProp(item, prop) ?? "";
     };
 
     update();
