@@ -45,7 +45,17 @@
             <h1>Projects</h1>
 
             <div class="toolbar">
-                <button onclick='projects.add({ id: uid(), name: "New project", tasks: [] });'>Add project</button>
+                <button
+                    onclick="
+                        projects.add({
+                            id: uid(),
+                            name: 'New project',
+                            tasks: [],
+                        })
+                    "
+                >
+                    Add project
+                </button>
             </div>
 
             <!-- Outer component: one per project -->
@@ -56,21 +66,26 @@
                         <button mdl="store.remove(item.id)">x</button>
                     </header>
 
-                    <label>
-                        Name
-                        <input type="text" mdl="name" />
-                    </label>
+                    <p>
+                        <label>
+                            Name
+                            <input type="text" mdl="name" />
+                        </label>
+                    </p>
 
-                    <label>
-                        Description
-                        <textarea mdl="description"></textarea>
-                    </label>
+                    <p>
+                        <label>
+                            Description
+                            <textarea mdl="description"></textarea>
+                        </label>
+                    </p>
 
                     <!-- Inner component: resolves against this project's `tasks` child store -->
                     <template mdl="tasks">
                         <div class="task">
                             <input type="checkbox" mdl="complete" />
                             <input type="text" mdl="text" />
+                            <input type="number" mdl="remaining" />
                             <select mdl="status">
                                 <option>Delayed</option>
                                 <option>On target</option>
@@ -79,10 +94,40 @@
                         </div>
                     </template>
 
-                    <button mdl="item.tasks.add({ id: uid(), text: 'New task', complete: false })">Add task</button>
-                    <button mdl="for (var task of item.tasks) task.complete = true;">All done</button>
+                    <button
+                        mdl="item.tasks.add({ id: uid(), text: 'New task', remaining: 1, complete: false })"
+                    >
+                        Add task
+                    </button>
+                    <button
+                        mdl="for (var task of item.tasks) task.complete = true;"
+                    >
+                        All done
+                    </button>
                 </section>
             </template>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Task</th>
+                        <th>Status</th>
+                        <th>Complete</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <template mdl="projects">
+                        <template mdl="tasks">
+                            <tr>
+                                <td mdl="text"></td>
+                                <td mdl="status"></td>
+                                <td mdl="complete"></td>
+                            </tr>
+                        </template>
+                    </template>
+                </tbody>
+            </table>
         </main>
     </body>
 
@@ -97,8 +142,18 @@
                 name: "Home",
                 description: "foo",
                 tasks: [
-                    { id: uid(), text: "Take out trash", complete: false },
-                    { id: uid(), text: "Do laundry", complete: true },
+                    {
+                        id: uid(),
+                        text: "Take out trash",
+                        remaining: 1,
+                        complete: false,
+                    },
+                    {
+                        id: uid(),
+                        text: "Do laundry",
+                        remaining: 1,
+                        complete: true,
+                    },
                 ],
             },
             {
@@ -106,9 +161,25 @@
                 name: "Work",
                 description: "bar",
                 tasks: [
-                    { id: uid(), text: "Finish a project", complete: false },
-                    { id: uid(), text: "Reply to email", complete: false },
-                    { id: uid(), text: "Write docs", status: "On target", complete: false },
+                    {
+                        id: uid(),
+                        text: "Finish a project",
+                        remaining: 1,
+                        complete: false,
+                    },
+                    {
+                        id: uid(),
+                        text: "Reply to email",
+                        remaining: 1,
+                        complete: false,
+                    },
+                    {
+                        id: uid(),
+                        text: "Write docs",
+                        remaining: 1,
+                        status: "On target",
+                        complete: false,
+                    },
                 ],
             },
         ]);

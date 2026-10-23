@@ -153,6 +153,8 @@ function bindCheckbox(input, item, prop) {
  * @param {string} prop
  */
 function bindInput(input, item, prop) {
+    const isNumber = input.type === "number";
+
     const update = () => {
         const value = String(item[prop] ?? "");
         if (input.value !== value) input.value = value;
@@ -160,7 +162,7 @@ function bindInput(input, item, prop) {
 
     update();
     input.addEventListener("input", () => {
-        item[prop] = input.value;
+        item[prop] = isNumber ? Number(input.value) : input.value;
     });
     return { prop, update };
 }
