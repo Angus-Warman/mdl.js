@@ -111,18 +111,24 @@ const store = (name, items) => {
 
 /**
  * Wire up [mdl] elements in a fragment to an item.
+ * @template {Item} T
  * @param {ParentNode} root
- * @param {any} item
+ * @param {T} item
+ * @param {Store<T>} store
  * @returns {{ prop: string, update: () => void }[]}
  */
-function bindAll(root, item) {
+function bindAll(root, item, store) {
     return [...root.querySelectorAll("[mdl]")].map((el) => {
         const prop = /** @type {string} */ (el.getAttribute("mdl"));
+
+        if (el instanceof HTMLButtonElement) {
+            return bindButton(el, item, store, prop)
+        }
 
         if (el instanceof HTMLInputElement) {
             return el.type === "checkbox"
                 ? bindCheckbox(el, item, prop)
-                : bindTextInput(el, item, prop);
+                : bindInput(el, item, prop);
         }
         if (el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) {
             return bindValue(el, item, prop);
@@ -153,7 +159,7 @@ function bindCheckbox(input, item, prop) {
  * @param {any} item
  * @param {string} prop
  */
-function bindTextInput(input, item, prop) {
+function bindInput(input, item, prop) {
     const update = () => {
         const value = String(item[prop] ?? "");
         if (input.value !== value) input.value = value;
@@ -198,12 +204,46 @@ function bindText(el, item, prop) {
     return { prop, update };
 }
 
+/** @type {Map<string, Function>} compiled expressions, cached by source text */
+const compiled = new Map();
+
 /**
+ * @template {Item} T
+ * @param {string} expr
+ * @returns {(item: T, store: Store<T>, event: Event) => void}
+ */
+const compile = (expr) => {
+    let fn = compiled.get(expr);
+    if (!fn) {
+        fn = new Function("item", "store", "event", expr); // the eval-style step
+        compiled.set(expr, fn);
+    }
+    return /** @type {any} */ (fn);
+};
+
+/**
+ * @template {Item} T
+ * @param {HTMLButtonElement} el
+ * @param {T} item
+ * @param {Store<T>} item
+ * @param {string} prop
+ */
+function bindButton(el, item, store, prop) {
+    const update = () => {};
+
+    const run = compile(prop)
+    el.addEventListener("click", (event) => run(item, store, event))
+
+    return { prop, update };
+}
+
+/**
+ * @template {Item} T
  * Stamp out a template once per item and keep it in sync.
  * @param {HTMLTemplateElement} template
- * @param {Store<any>} s
+ * @param {Store<T>} store
  */
-function mount(template, s) {
+function mount(template, store) {
     const end = document.createComment("mdl");
     template.after(end);
 
@@ -212,14 +252,14 @@ function mount(template, s) {
 
     const add = (/** @type {any} */ item) => {
         const frag = /** @type {DocumentFragment} */ (template.content.cloneNode(true));
-        const binds = bindAll(frag, item);
+        const binds = bindAll(frag, item, store);
         mdl.scan(frag, item); // nested templates resolve against this item
         const nodes = [...frag.childNodes];
         end.before(frag);
         rendered.set(item.id, { nodes, binds });
     };
 
-    s.subscribe((event, item, key) => {
+    store.subscribe((event, item, key) => {
         if (event === "add") add(item);
         else if (event === "remove") {
             rendered.get(item.id)?.nodes.forEach((n) => n.remove());
@@ -229,7 +269,9 @@ function mount(template, s) {
         }
     });
 
-    for (const item of s) add(item);
+    for (const item of store) {
+        add(item);
+    }
 }
 
 var mdl = (() => {
