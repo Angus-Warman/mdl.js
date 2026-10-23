@@ -110,15 +110,15 @@ const store = (name, items) => {
 };
 
 /**
- * Wire up [mdl-bind] elements in a fragment to an item.
+ * Wire up [mdl] elements in a fragment to an item.
  * @param {ParentNode} root
  * @param {any} item
  * @returns {{ prop: string, update: () => void }[]}
  */
 function bindAll(root, item) {
-    return [...root.querySelectorAll("[mdl-bind]")].map((el) => {
+    return [...root.querySelectorAll("[mdl]")].map((el) => {
         const input = /** @type {HTMLInputElement} */ (el);
-        const prop = /** @type {string} */ (input.getAttribute("mdl-bind"));
+        const prop = /** @type {string} */ (input.getAttribute("mdl"));
         const isCheckbox = input.type === "checkbox";
 
         const update = () => {

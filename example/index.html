@@ -31,14 +31,14 @@
             <template mdl="projects">
                 <section class="project">
                     <header>
-                        <input type="text" mdl-bind="name" />
+                        <input type="text" mdl="name" />
                     </header>
 
                     <!-- Inner component: resolves against this project's `tasks` child store -->
                     <template mdl="tasks">
                         <div class="task">
-                            <input type="checkbox" mdl-bind="complete" />
-                            <input type="text" mdl-bind="text" />
+                            <input type="checkbox" mdl="complete" />
+                            <input type="text" mdl="text" />
                         </div>
                     </template>
                 </section>
@@ -52,20 +52,20 @@
 
         const projects = store("projects", [
             {
-                id: "p1",
+                id: uid(),
                 name: "Home",
                 tasks: [
-                    { id: "t1", text: "Take out trash", complete: false },
-                    { id: "t2", text: "Do laundry", complete: true },
+                    { id: uid(), text: "Take out trash", complete: false },
+                    { id: uid(), text: "Do laundry", complete: true },
                 ],
             },
             {
-                id: "p2",
+                id: uid(),
                 name: "Work",
                 tasks: [
-                    { id: "t3", text: "Finish a project", complete: false },
-                    { id: "t4", text: "Reply to email", complete: false },
-                    { id: "t5", text: "Write docs", complete: false },
+                    { id: uid(), text: "Finish a project", complete: false },
+                    { id: uid(), text: "Reply to email", complete: false },
+                    { id: uid(), text: "Write docs", complete: false },
                 ],
             },
         ]);
@@ -93,7 +93,7 @@
         }
 
         function renameFirst() {
-            const first = projects.get("p1");
+            const first = [...projects][0];
             if (first) first.name = "Home (renamed)";
         }
 
