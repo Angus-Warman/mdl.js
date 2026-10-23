@@ -1,16 +1,41 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
     <head>
-        <link rel="icon" href="data:=">
-        <meta name="color-scheme" content="dark light">
+        <link rel="icon" href="data:=" />
+        <meta name="color-scheme" content="dark light" />
         <title>mdl demo: projects &amp; tasks</title>
         <style>
-            body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; }
-            .project { border: 1px solid #8884; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem; }
-            .project > header { font-weight: 600; margin-bottom: 0.5rem; }
-            .task { display: flex; gap: 0.5rem; align-items: center; margin: 0.25rem 0; }
-            .task input[type="text"] { flex: 1; }
-            .toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
+            body {
+                font-family: system-ui, sans-serif;
+                max-width: 40rem;
+                margin: 2rem auto;
+                padding: 0 1rem;
+            }
+            .project {
+                border: 1px solid #8884;
+                border-radius: 8px;
+                padding: 0.75rem 1rem;
+                margin-bottom: 1rem;
+            }
+            .project > header {
+                font-weight: 600;
+                margin-bottom: 0.5rem;
+            }
+            .task {
+                display: flex;
+                gap: 0.5rem;
+                align-items: center;
+                margin: 0.25rem 0;
+            }
+            .task input[type="text"] {
+                flex: 1;
+            }
+            .toolbar {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                margin-bottom: 1.5rem;
+            }
         </style>
         <script src="/mdl.js"></script>
     </head>
@@ -21,9 +46,13 @@
 
             <div class="toolbar">
                 <button onclick="addProject()">Add project</button>
-                <button onclick="addTaskToLast()">Add task to last project</button>
+                <button onclick="addTaskToLast()">
+                    Add task to last project
+                </button>
                 <button onclick="completeAll()">Complete everything</button>
-                <button onclick="renameFirst()">Rename first project (from code)</button>
+                <button onclick="renameFirst()">
+                    Rename first project (from code)
+                </button>
                 <button onclick="removeLast()">Remove last project</button>
             </div>
 
@@ -31,8 +60,10 @@
             <template mdl="projects">
                 <section class="project">
                     <header>
-                        <input type="text" mdl="name" />
+                        <h4 mdl="name"></h4>
                     </header>
+
+                    <input type="text" mdl="name" />
 
                     <!-- Inner component: resolves against this project's `tasks` child store -->
                     <template mdl="tasks">

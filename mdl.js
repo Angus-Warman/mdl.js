@@ -117,25 +117,85 @@ const store = (name, items) => {
  */
 function bindAll(root, item) {
     return [...root.querySelectorAll("[mdl]")].map((el) => {
-        const input = /** @type {HTMLInputElement} */ (el);
-        const prop = /** @type {string} */ (input.getAttribute("mdl"));
-        const isCheckbox = input.type === "checkbox";
+        const prop = /** @type {string} */ (el.getAttribute("mdl"));
 
-        const update = () => {
-            if (isCheckbox) input.checked = !!item[prop];
-            else if ("value" in input) {
-                if (input.value !== String(item[prop] ?? "")) input.value = item[prop] ?? "";
-            } else input.textContent = item[prop] ?? "";
-        };
-
-        update();
-        if ("value" in input) {
-            input.addEventListener(isCheckbox ? "change" : "input", () => {
-                item[prop] = isCheckbox ? input.checked : input.value;
-            });
+        if (el instanceof HTMLInputElement) {
+            return el.type === "checkbox"
+                ? bindCheckbox(el, item, prop)
+                : bindTextInput(el, item, prop);
         }
-        return { prop, update };
+        if (el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) {
+            return bindValue(el, item, prop);
+        }
+        return bindText(/** @type {HTMLElement} */ (el), item, prop);
     });
+}
+
+/**
+ * @param {HTMLInputElement} input
+ * @param {any} item
+ * @param {string} prop
+ */
+function bindCheckbox(input, item, prop) {
+    const update = () => {
+        input.checked = !!item[prop];
+    };
+
+    update();
+    input.addEventListener("change", () => {
+        item[prop] = input.checked;
+    });
+    return { prop, update };
+}
+
+/**
+ * @param {HTMLInputElement} input
+ * @param {any} item
+ * @param {string} prop
+ */
+function bindTextInput(input, item, prop) {
+    const update = () => {
+        const value = String(item[prop] ?? "");
+        if (input.value !== value) input.value = value;
+    };
+
+    update();
+    input.addEventListener("input", () => {
+        item[prop] = input.value;
+    });
+    return { prop, update };
+}
+
+/**
+ * @param {HTMLTextAreaElement | HTMLSelectElement} input
+ * @param {any} item
+ * @param {string} prop
+ */
+function bindValue(input, item, prop) {
+    const update = () => {
+        const value = String(item[prop] ?? "");
+        if (input.value !== value) input.value = value;
+    };
+
+    update();
+    input.addEventListener("input", () => {
+        item[prop] = input.value;
+    });
+    return { prop, update };
+}
+
+/**
+ * @param {HTMLElement} el
+ * @param {any} item
+ * @param {string} prop
+ */
+function bindText(el, item, prop) {
+    const update = () => {
+        el.textContent = item[prop] ?? "";
+    };
+
+    update();
+    return { prop, update };
 }
 
 /**
