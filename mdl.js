@@ -28,7 +28,7 @@ class Store {
      * @returns {T} the reactive version of the item
      */
     add(original) {
-        if (!original.id) throw new Error("Every item needs an id");
+        if (!original.id) throw new Error(`${JSON.stringify(original)} has no "id" property`);
         if (this.#items.has(original.id)) throw new Error(`Duplicate id: ${original.id}`);
 
         const item = this.#reactive(original);
@@ -92,20 +92,13 @@ class Store {
 /** Arrays become child stores; everything else passes through. */
 const wrap = (/** @type {any} */ value) => (Array.isArray(value) ? new Store(value) : value);
 
-/** Registry of named top-level stores, looked up by <template mdl="name"> */
-/** @type {Map<string, Store<any>>} */
-const registry = new Map();
-
 /**
  * @template {Item} T
- * @param {string} name  matches <template mdl="name">
  * @param {T[]} items
  * @returns {Store<T>}
  */
-const store = (name, items) => {
+const store = (items) => {
     const s = new Store(items);
-    registry.set(name, s);
-    if (document.readyState !== "loading") mdl.scan(); // late registration
     return s;
 };
 
@@ -276,6 +269,9 @@ function mount(template, store) {
 
 var mdl = (() => {
     class Mdl {
+        /** @type {Map<string, Store<any>>} */
+        #registry = new Map();
+
         constructor() {
             const init = () => this.scan();
             if (document.readyState === "loading") {
@@ -295,13 +291,37 @@ var mdl = (() => {
                 const template = /** @type {HTMLTemplateElement} */ (el);
                 if (template.dataset.mdlInit) return; // already handled
 
+                scope ??= window;
+
                 const name = /** @type {string} */ (template.getAttribute("mdl"));
-                const s = scope?.[name] ?? registry.get(name);
-                if (!(s instanceof Store)) return;
+                const store = scope[name] ?? this.#registry.get(name);
+
+                if (!store || !(store instanceof Store)) return;
 
                 template.dataset.mdlInit = "1";
-                mount(template, s);
+                mount(template, store);
             });
+        }
+
+        /**
+         *
+         * @param {*} stores
+         */
+        register(stores) {
+            for (const [name, s] of Object.entries(stores)) {
+              this.#registry.set(name, s)
+            }
+            this.scan()
+        }
+
+        /**
+         *
+         * @param {string} name
+         * @param {Store<any>} store
+         */
+        registerAs(name, store) {
+            this.#registry.set(name, store)
+            this.scan()
         }
     }
 

@@ -3,7 +3,7 @@
     <head>
         <link rel="icon" href="data:=" />
         <meta name="color-scheme" content="dark light" />
-        <title>mdl demo: projects &amp; tasks</title>
+        <title>mdl demo</title>
         <style>
             body {
                 font-family: system-ui, sans-serif;
@@ -45,7 +45,7 @@
             <h1>Projects</h1>
 
             <div class="toolbar">
-                <button onclick="addProject()">Add project</button>
+                <button onclick='projects.add({ id: uid(), name: "New project", tasks: [] });'>Add project</button>
             </div>
 
             <!-- Outer component: one per project -->
@@ -53,12 +53,18 @@
                 <section class="project">
                     <header>
                         <h4 mdl="name"></h4>
-                        <button mdl="store.remove(item.id)">Remove</button>
+                        <button mdl="store.remove(item.id)">x</button>
                     </header>
 
-                    <input type="text" mdl="name" />
+                    <label>
+                        Name
+                        <input type="text" mdl="name" />
+                    </label>
 
-                    <textarea mdl="description"></textarea>
+                    <label>
+                        Description
+                        <textarea mdl="description"></textarea>
+                    </label>
 
                     <!-- Inner component: resolves against this project's `tasks` child store -->
                     <template mdl="tasks">
@@ -84,7 +90,8 @@
         var nextId = 100;
         const uid = () => String(nextId++);
 
-        const projects = store("projects", [
+        // Must be var to work, in modules use mdl.register({ projects })
+        var projects = store([
             {
                 id: uid(),
                 name: "Home",
@@ -105,9 +112,5 @@
                 ],
             },
         ]);
-
-        function addProject() {
-            projects.add({ id: uid(), name: "New project", tasks: [] });
-        }
     </script>
 </html>
