@@ -1,0 +1,10 @@
+{
+    "name": "mdl.js",
+    "private": true,
+    "type": "commonjs",
+    "scripts": {
+        "test": "node --test",
+        "tsc": "npx --yes -p typescript tsc --noEmit --allowJs --checkJs --target es2022 --lib dom,es2022 mdl.js",
+        "check": "npm run tsc && npm run test"
+    }
+}
