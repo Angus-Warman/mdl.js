@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="icon" href="data:=">
+        <meta name="color-scheme" content="dark light">
+        <script src="/mdl.js"></script>
+    </head>
+
+    <body>
+        <main>
+            <template mdl="todos">
+                <section>
+                    <label>
+                        TODO
+                        <input type="text" mdl-bind="text" />
+                    </label>
+
+                    <label>
+                        Complete?
+                        <input type="checkbox" mdl-bind="complete" />
+                    </label>
+                </section>
+            </template>
+
+            <button onclick="markAllComplete()">Mark all complete</button>
+        </main>
+    </body>
+
+    <script>
+        var originalData = [
+            { id: "1", text: "Take out trash", complete: false },
+            { id: "2", text: "Do laundry", complete: false },
+            { id: "3", text: "Finish a project", complete: false },
+        ]
+
+        const todos = store(originalData);
+
+        function markAllComplete() {
+            for (var item in todos) {
+                item.complete = true;
+            }
+        }
+    </script>
+</html>
