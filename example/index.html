@@ -46,14 +46,6 @@
 
             <div class="toolbar">
                 <button onclick="addProject()">Add project</button>
-                <button onclick="addTaskToLast()">
-                    Add task to last project
-                </button>
-                <button onclick="completeAll()">Complete everything</button>
-                <button onclick="renameFirst()">
-                    Rename first project (from code)
-                </button>
-                <button onclick="removeLast()">Remove last project</button>
             </div>
 
             <!-- Outer component: one per project -->
@@ -61,18 +53,27 @@
                 <section class="project">
                     <header>
                         <h4 mdl="name"></h4>
+                        <button mdl="store.remove(item.id)">Remove</button>
                     </header>
 
                     <input type="text" mdl="name" />
+
+                    <textarea mdl="description"></textarea>
 
                     <!-- Inner component: resolves against this project's `tasks` child store -->
                     <template mdl="tasks">
                         <div class="task">
                             <input type="checkbox" mdl="complete" />
                             <input type="text" mdl="text" />
+                            <select mdl="status">
+                                <option>Delayed</option>
+                                <option>On target</option>
+                            </select>
+                            <button mdl="store.remove(item.id)">x</button>
                         </div>
                     </template>
 
+                    <button mdl="item.tasks.add({ id: uid(), text: 'New task', complete: false })">Add task</button>
                     <button mdl="for (var task of item.tasks) task.complete = true;">All done</button>
                 </section>
             </template>
@@ -87,6 +88,7 @@
             {
                 id: uid(),
                 name: "Home",
+                description: "foo",
                 tasks: [
                     { id: uid(), text: "Take out trash", complete: false },
                     { id: uid(), text: "Do laundry", complete: true },
@@ -95,44 +97,17 @@
             {
                 id: uid(),
                 name: "Work",
+                description: "bar",
                 tasks: [
                     { id: uid(), text: "Finish a project", complete: false },
                     { id: uid(), text: "Reply to email", complete: false },
-                    { id: uid(), text: "Write docs", complete: false },
+                    { id: uid(), text: "Write docs", status: "On target", complete: false },
                 ],
             },
         ]);
 
-        function lastProject() {
-            return [...projects].at(-1);
-        }
-
         function addProject() {
             projects.add({ id: uid(), name: "New project", tasks: [] });
-        }
-
-        function addTaskToLast() {
-            const project = lastProject();
-            if (!project) return;
-            project.tasks.add({ id: uid(), text: "New task", complete: false });
-        }
-
-        function completeAll() {
-            for (const project of projects) {
-                for (const task of project.tasks) {
-                    task.complete = true;
-                }
-            }
-        }
-
-        function renameFirst() {
-            const first = [...projects][0];
-            if (first) first.name = "Home (renamed)";
-        }
-
-        function removeLast() {
-            const project = lastProject();
-            if (project) projects.remove(project.id);
         }
     </script>
 </html>

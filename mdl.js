@@ -225,7 +225,7 @@ const compile = (expr) => {
  * @template {Item} T
  * @param {HTMLButtonElement} el
  * @param {T} item
- * @param {Store<T>} item
+ * @param {Store<T>} store
  * @param {string} prop
  */
 function bindButton(el, item, store, prop) {
