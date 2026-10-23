@@ -4,37 +4,13 @@
         <link rel="icon" href="data:=" />
         <meta name="color-scheme" content="dark light" />
         <title>mdl demo</title>
+        <link
+            rel="stylesheet"
+            href="https://cdn.simplecss.org/simple.min.css"
+        />
         <style>
-            body {
-                font-family: system-ui, sans-serif;
-                max-width: 40rem;
-                margin: 2rem auto;
-                padding: 0 1rem;
-            }
-            .project {
-                border: 1px solid #8884;
-                border-radius: 8px;
-                padding: 0.75rem 1rem;
-                margin-bottom: 1rem;
-            }
-            .project > header {
-                font-weight: 600;
-                margin-bottom: 0.5rem;
-            }
-            .task {
-                display: flex;
-                gap: 0.5rem;
-                align-items: center;
-                margin: 0.25rem 0;
-            }
-            .task input[type="text"] {
-                flex: 1;
-            }
-            .toolbar {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 0.5rem;
-                margin-bottom: 1.5rem;
+            :root {
+                --accent: lightblue;
             }
         </style>
         <script src="/mdl.js"></script>
@@ -110,8 +86,10 @@
             <table>
                 <thead>
                     <tr>
+                        <th>Project</th>
                         <th>Task</th>
                         <th>Status</th>
+                        <th>Remaining</th>
                         <th>Complete</th>
                     </tr>
                 </thead>
@@ -120,8 +98,10 @@
                     <template mdl="projects">
                         <template mdl="tasks">
                             <tr>
+                                <td mdl="$parent.name"></td>
                                 <td mdl="text"></td>
                                 <td mdl="status"></td>
+                                <td mdl="remaining"></td>
                                 <td mdl="complete"></td>
                             </tr>
                         </template>
