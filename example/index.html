@@ -3,42 +3,103 @@
     <head>
         <link rel="icon" href="data:=">
         <meta name="color-scheme" content="dark light">
+        <title>mdl demo: projects &amp; tasks</title>
+        <style>
+            body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; }
+            .project { border: 1px solid #8884; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem; }
+            .project > header { font-weight: 600; margin-bottom: 0.5rem; }
+            .task { display: flex; gap: 0.5rem; align-items: center; margin: 0.25rem 0; }
+            .task input[type="text"] { flex: 1; }
+            .toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
+        </style>
         <script src="/mdl.js"></script>
     </head>
 
     <body>
         <main>
-            <template mdl="todos">
-                <section>
-                    <label>
-                        TODO
-                        <input type="text" mdl-bind="text" />
-                    </label>
+            <h1>Projects</h1>
 
-                    <label>
-                        Complete?
-                        <input type="checkbox" mdl-bind="complete" />
-                    </label>
+            <div class="toolbar">
+                <button onclick="addProject()">Add project</button>
+                <button onclick="addTaskToLast()">Add task to last project</button>
+                <button onclick="completeAll()">Complete everything</button>
+                <button onclick="renameFirst()">Rename first project (from code)</button>
+                <button onclick="removeLast()">Remove last project</button>
+            </div>
+
+            <!-- Outer component: one per project -->
+            <template mdl="projects">
+                <section class="project">
+                    <header>
+                        <input type="text" mdl-bind="name" />
+                    </header>
+
+                    <!-- Inner component: resolves against this project's `tasks` child store -->
+                    <template mdl="tasks">
+                        <div class="task">
+                            <input type="checkbox" mdl-bind="complete" />
+                            <input type="text" mdl-bind="text" />
+                        </div>
+                    </template>
                 </section>
             </template>
-
-            <button onclick="markAllComplete()">Mark all complete</button>
         </main>
     </body>
 
     <script>
-        var originalData = [
-            { id: "1", text: "Take out trash", complete: false },
-            { id: "2", text: "Do laundry", complete: false },
-            { id: "3", text: "Finish a project", complete: false },
-        ]
+        var nextId = 100;
+        const uid = () => String(nextId++);
 
-        const todos = store(originalData);
+        const projects = store("projects", [
+            {
+                id: "p1",
+                name: "Home",
+                tasks: [
+                    { id: "t1", text: "Take out trash", complete: false },
+                    { id: "t2", text: "Do laundry", complete: true },
+                ],
+            },
+            {
+                id: "p2",
+                name: "Work",
+                tasks: [
+                    { id: "t3", text: "Finish a project", complete: false },
+                    { id: "t4", text: "Reply to email", complete: false },
+                    { id: "t5", text: "Write docs", complete: false },
+                ],
+            },
+        ]);
 
-        function markAllComplete() {
-            for (var item in todos) {
-                item.complete = true;
+        function lastProject() {
+            return [...projects].at(-1);
+        }
+
+        function addProject() {
+            projects.add({ id: uid(), name: "New project", tasks: [] });
+        }
+
+        function addTaskToLast() {
+            const project = lastProject();
+            if (!project) return;
+            project.tasks.add({ id: uid(), text: "New task", complete: false });
+        }
+
+        function completeAll() {
+            for (const project of projects) {
+                for (const task of project.tasks) {
+                    task.complete = true;
+                }
             }
+        }
+
+        function renameFirst() {
+            const first = projects.get("p1");
+            if (first) first.name = "Home (renamed)";
+        }
+
+        function removeLast() {
+            const project = lastProject();
+            if (project) projects.remove(project.id);
         }
     </script>
 </html>
