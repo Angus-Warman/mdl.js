@@ -152,48 +152,53 @@ var mdl = (function () {
                     target[k] = original[k];
                 }
             }
-            var proxy = new Proxy(target, {
-                get: function (t, key, receiver) {
-                    if (key === "$parent") return storeParent;
-                    if (key === "$get") {
-                        /**
-                         * @param {string} prop
-                         */
-                        return function (prop) {
-                            return getProp(proxy, prop);
-                        };
-                    }
-                    if (key === "$set") {
-                        /**
-                         * @param {string} prop
-                         * @param {any} value
-                         */
-                        return function (prop, value) {
-                            return setProp(proxy, prop, value);
-                        };
-                    }
-                    return Reflect.get(t, key, receiver);
-                },
-                has: function (t, key) {
-                    if (key === "$parent") return storeParent !== undefined;
-                    if (key === "$get" || key === "$set") return true;
-                    return Reflect.has(t, key);
-                },
-                set: function (t, key, value, receiver) {
-                    var wrapped = wrap(value, proxy);
-                    var ok = Reflect.set(t, key, wrapped, receiver);
-                    if (typeof key === "string") {
-                        emit("change", proxy, key);
-                    }
-                    return ok;
-                },
-            });
+            var proxy = /** @type {Reactive<T>} */ (
+                /** @type {unknown} */ (
+                    new Proxy(target, {
+                        get: function (t, key, receiver) {
+                            if (key === "$parent") return storeParent;
+                            if (key === "$get") {
+                                /**
+                                 * @param {string} prop
+                                 */
+                                return function (prop) {
+                                    return getProp(proxy, prop);
+                                };
+                            }
+                            if (key === "$set") {
+                                /**
+                                 * @param {string} prop
+                                 * @param {any} value
+                                 */
+                                return function (prop, value) {
+                                    return setProp(proxy, prop, value);
+                                };
+                            }
+                            return Reflect.get(t, key, receiver);
+                        },
+                        has: function (t, key) {
+                            if (key === "$parent")
+                                return storeParent !== undefined;
+                            if (key === "$get" || key === "$set") return true;
+                            return Reflect.has(t, key);
+                        },
+                        set: function (t, key, value, receiver) {
+                            var wrapped = wrap(value, proxy);
+                            var ok = Reflect.set(t, key, wrapped, receiver);
+                            if (typeof key === "string") {
+                                emit("change", proxy, key);
+                            }
+                            return ok;
+                        },
+                    })
+                )
+            );
             for (var key in target) {
                 if (Object.prototype.hasOwnProperty.call(target, key)) {
                     target[key] = wrap(target[key], proxy);
                 }
             }
-            return /** @type {Reactive<T>} */ (proxy);
+            return proxy;
         };
 
         /** @type {Store<T>} */
