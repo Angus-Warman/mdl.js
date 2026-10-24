@@ -13,16 +13,26 @@ var mdl = (function () {
     /** @type {Map<string, Function>} */
     var compiled = new Map();
 
-    var wrap = function (/** @type {any} */ value, /** @type {any} */ parent) {
+    /**
+     * Arrays become child stores; everything else passes through.
+     * @param {any} value
+     * @param {any} parent
+     */
+    var wrap = function (value, parent) {
         if (Array.isArray(value)) {
             return createStore(value, parent);
         }
         return value;
     };
 
-    var getProp = function (/** @type {any} */ item, /** @type {any} */ prop) {
+    /**
+     * Read a property path from an item, logging when part of it is missing.
+     * @param {any} item
+     * @param {string} prop
+     */
+    var getProp = function (item, prop) {
         var value = item;
-        var parts = prop.split(".");
+        var parts = String(prop).split(".");
         for (var i = 0; i < parts.length; i++) {
             var part = parts[i];
             if (value == null || !(part in Object(value))) {
@@ -34,9 +44,19 @@ var mdl = (function () {
         return value;
     };
 
-    var setProp = function (/** @type {any} */ item, /** @type {any} */ prop, /** @type {any} */ value) {
-        var parts = prop.split(".");
+    /**
+     * Write a property path on an item, logging when part of it is missing.
+     * @param {any} item
+     * @param {string} prop
+     * @param {any} value
+     */
+    var setProp = function (item, prop, value) {
+        var parts = String(prop).split(".");
         var last = parts.pop();
+        if (last === undefined) {
+            console.error("[mdl] Missing property \"" + prop + "\"", item);
+            return;
+        }
         var target = item;
         for (var i = 0; i < parts.length; i++) {
             var part = parts[i];
@@ -53,7 +73,11 @@ var mdl = (function () {
         target[last] = value;
     };
 
-    function createStore(/** @type {any} */ originals, /** @type {any} */ parent) {
+    /**
+     * @param {any} [originals]
+     * @param {any} [parent]
+     */
+    function createStore(originals, parent) {
         if (originals === undefined) {
             originals = [];
         }
@@ -63,13 +87,21 @@ var mdl = (function () {
         var listeners = new Set();
         var storeParent = parent;
 
-        var emit = function (/** @type {any} */ event, /** @type {any} */ item, /** @type {any} */ key) {
+        /**
+         * @param {StoreEvent} event
+         * @param {any} item
+         * @param {any} key
+         */
+        var emit = function (event, item, key) {
             listeners.forEach(function (fn) {
                 fn(event, item, key);
             });
         };
 
-        var makeReactive = function (/** @type {any} */ original) {
+        /**
+         * @param {any} original
+         */
+        var makeReactive = function (original) {
             var target = /** @type {any} */ ({});
             for (var k in original) {
                 if (Object.prototype.hasOwnProperty.call(original, k)) {
@@ -80,12 +112,19 @@ var mdl = (function () {
                 get: function (t, key, receiver) {
                     if (key === "$parent") return storeParent;
                     if (key === "$get") {
-                        return function (/** @type {any} */ prop) {
+                        /**
+                         * @param {any} prop
+                         */
+                        return function (prop) {
                             return getProp(proxy, prop);
                         };
                     }
                     if (key === "$set") {
-                        return function (/** @type {any} */ prop, /** @type {any} */ value) {
+                        /**
+                         * @param {any} prop
+                         * @param {any} value
+                         */
+                        return function (prop, value) {
                             return setProp(proxy, prop, value);
                         };
                     }
@@ -115,7 +154,10 @@ var mdl = (function () {
 
         var store = {
             isStore: true,
-            add: function (/** @type {any} */ original) {
+            /**
+             * @param {any} original
+             */
+            add: function (original) {
                 if (!original.id) {
                     throw new Error(JSON.stringify(original) + ' has no "id" property');
                 }
@@ -127,10 +169,16 @@ var mdl = (function () {
                 emit("add", item, undefined);
                 return item;
             },
-            get: function (/** @type {any} */ id) {
+            /**
+             * @param {any} id
+             */
+            get: function (id) {
                 return items.get(id);
             },
-            remove: function (/** @type {any} */ id) {
+            /**
+             * @param {any} id
+             */
+            remove: function (id) {
                 var item = items.get(id);
                 if (!item) return;
                 items.delete(id);
@@ -139,7 +187,10 @@ var mdl = (function () {
             [Symbol.iterator]: function () {
                 return items.values();
             },
-            subscribe: function (/** @type {any} */ fn) {
+            /**
+             * @param {Function} fn
+             */
+            subscribe: function (fn) {
                 listeners.add(fn);
                 return function () {
                     listeners.delete(fn);
@@ -153,14 +204,20 @@ var mdl = (function () {
         return store;
     }
 
-    var store = function (/** @type {any} */ items) {
+    /**
+     * @param {any} [items]
+     */
+    var store = function (items) {
         if (items === undefined) {
             items = [];
         }
         return createStore(items, undefined);
     };
 
-    var compile = function (/** @type {any} */ expr) {
+    /**
+     * @param {any} expr
+     */
+    var compile = function (expr) {
         var fn = compiled.get(expr);
         if (!fn) {
             fn = new Function("item", "store", "event", expr);
@@ -169,7 +226,13 @@ var mdl = (function () {
         return fn;
     };
 
-    var bindButton = function (/** @type {any} */ el, /** @type {any} */ item, /** @type {any} */ storeRef, /** @type {any} */ prop) {
+    /**
+     * @param {any} el
+     * @param {any} item
+     * @param {any} storeRef
+     * @param {any} prop
+     */
+    var bindButton = function (el, item, storeRef, prop) {
         var update = function () {};
         var run = compile(prop);
         el.addEventListener("click", function (/** @type {any} */ event) {
@@ -178,7 +241,12 @@ var mdl = (function () {
         return { prop: prop, update: update };
     };
 
-    var bindCheckbox = function (/** @type {any} */ input, /** @type {any} */ item, /** @type {any} */ prop) {
+    /**
+     * @param {any} input
+     * @param {any} item
+     * @param {any} prop
+     */
+    var bindCheckbox = function (input, item, prop) {
         var update = function () {
             input.checked = !!getProp(item, prop);
         };
@@ -189,7 +257,12 @@ var mdl = (function () {
         return { prop: prop, update: update };
     };
 
-    var bindInput = function (/** @type {any} */ input, /** @type {any} */ item, /** @type {any} */ prop) {
+    /**
+     * @param {any} input
+     * @param {any} item
+     * @param {any} prop
+     */
+    var bindInput = function (input, item, prop) {
         var isNumber = input.type === "number";
         var update = function () {
             var v = getProp(item, prop);
@@ -204,7 +277,12 @@ var mdl = (function () {
         return { prop: prop, update: update };
     };
 
-    var bindValue = function (/** @type {any} */ input, /** @type {any} */ item, /** @type {any} */ prop) {
+    /**
+     * @param {any} input
+     * @param {any} item
+     * @param {any} prop
+     */
+    var bindValue = function (input, item, prop) {
         var update = function () {
             var v = getProp(item, prop);
             if (v === undefined || v === null) v = "";
@@ -218,7 +296,12 @@ var mdl = (function () {
         return { prop: prop, update: update };
     };
 
-    var bindText = function (/** @type {any} */ el, /** @type {any} */ item, /** @type {any} */ prop) {
+    /**
+     * @param {any} el
+     * @param {any} item
+     * @param {any} prop
+     */
+    var bindText = function (el, item, prop) {
         var update = function () {
             var v = getProp(item, prop);
             if (v === undefined || v === null) el.textContent = "";
@@ -228,7 +311,12 @@ var mdl = (function () {
         return { prop: prop, update: update };
     };
 
-    var bindAll = function (/** @type {any} */ root, /** @type {any} */ item, /** @type {any} */ storeRef) {
+    /**
+     * @param {any} root
+     * @param {any} item
+     * @param {any} storeRef
+     */
+    var bindAll = function (root, item, storeRef) {
         var nodes = root.querySelectorAll("[mdl]");
         var result = [];
         for (var i = 0; i < nodes.length; i++) {
@@ -255,11 +343,18 @@ var mdl = (function () {
         return result;
     };
 
-    var mount = function (/** @type {any} */ template, /** @type {any} */ storeRef) {
+    /**
+     * @param {any} template
+     * @param {any} storeRef
+     */
+    var mount = function (template, storeRef) {
         var end = document.createComment("mdl");
         template.after(end);
         var rendered = new Map();
-        var add = function (/** @type {any} */ item) {
+        /**
+         * @param {any} item
+         */
+        var add = function (item) {
             var frag = template.content.cloneNode(true);
             var binds = bindAll(frag, item, storeRef);
             mdl.scan(frag, item);
@@ -301,7 +396,11 @@ var mdl = (function () {
         }
     };
 
-    var scan = function (/** @type {any} */ root, /** @type {any} */ scope) {
+    /**
+     * @param {any} [root]
+     * @param {any} [scope]
+     */
+    var scan = function (root, scope) {
         if (root === undefined) root = document;
         var templates = root.querySelectorAll("template[mdl]");
         for (var i = 0; i < templates.length; i++) {
@@ -324,7 +423,10 @@ var mdl = (function () {
         }
     };
 
-    var register = function (/** @type {any} */ stores) {
+    /**
+     * @param {any} stores
+     */
+    var register = function (stores) {
         for (var name in stores) {
             if (Object.prototype.hasOwnProperty.call(stores, name)) {
                 registry.set(name, stores[name]);
@@ -333,7 +435,11 @@ var mdl = (function () {
         scan(document, undefined);
     };
 
-    var registerAs = function (/** @type {string} */ name, /** @type {any} */ s) {
+    /**
+     * @param {string} name
+     * @param {any} s
+     */
+    var registerAs = function (name, s) {
         registry.set(name, s);
         scan(document, undefined);
     };
