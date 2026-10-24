@@ -21,7 +21,7 @@ function loadMdl() {
 
     vm.createContext(context);
     vm.runInContext(
-        `${source}\nglobalThis.__exports = { store, Store, getProp, setProp };`,
+        `${source}\nglobalThis.__exports = { store, mdl };`,
         context,
     );
 

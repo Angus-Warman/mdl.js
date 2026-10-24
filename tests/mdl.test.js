@@ -44,7 +44,7 @@ test("$parent follows arrays that are reassigned or added to", () => {
 });
 
 test("getProp and setProp resolve dotted paths", () => {
-    const { store, getProp, setProp } = loadMdl();
+    const { store } = loadMdl();
     const projects = store([
         { id: "p1", name: "Home", tasks: [{ id: "t1", text: "Trash" }] },
     ]);
@@ -59,7 +59,7 @@ test("getProp and setProp resolve dotted paths", () => {
 });
 
 test("missing binding properties log an error instead of writing", () => {
-    const { store, getProp, setProp, errors } = loadMdl();
+    const { store, errors } = loadMdl();
     const projects = store([
         { id: "p1", name: "Home", tasks: [{ id: "t1", text: "Trash" }] },
     ]);

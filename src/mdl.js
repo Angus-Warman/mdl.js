@@ -9,28 +9,18 @@
 var mdl = (function () {
     "use strict";
 
-    /** @type {Map<string, Store>} */
+    /** @type {Map<string, any>} */
     const registry = new Map();
-    /** @type {Map<string, Function>} compiled expressions, cached by source text */
+    /** @type {Map<string, Function>} */
     const compiled = new Map();
 
-    /**
-     * Arrays become child stores; everything else passes through.
-     * @param {any} value
-     * @param {any} [parent]
-     */
     const wrap = (value, parent) => (Array.isArray(value) ? createStore(value, parent) : value);
 
-    /**
-     * Read a property path from an item, logging when part of it is missing.
-     * @param {any} item
-     * @param {string} prop
-     */
     function getProp(item, prop) {
         let value = item;
         for (const part of prop.split(".")) {
             if (value == null || !(part in Object(value))) {
-                console.error(`[mdl] Missing property "${prop}"`, item);
+                console.error("[mdl] Missing property \"" + prop + "\"", item);
                 return undefined;
             }
             value = value[part];
@@ -38,305 +28,257 @@ var mdl = (function () {
         return value;
     }
 
-    /**
-     * Write a property path on an item, logging when part of it is missing.
-     * @param {any} item
-     * @param {string} prop
-     * @param {any} value
-     */
     function setProp(item, prop, value) {
         const parts = prop.split(".");
-        const last = /** @type {string} */ (parts.pop());
+        const last = parts.pop();
         let target = item;
         for (const part of parts) {
             if (target == null || !(part in Object(target))) {
-                console.error(`[mdl] Missing property "${prop}"`, item);
+                console.error("[mdl] Missing property \"" + prop + "\"", item);
                 return;
             }
             target = target[part];
         }
         if (target == null || !(last in Object(target))) {
-            console.error(`[mdl] Missing property "${prop}"`, item);
+            console.error("[mdl] Missing property \"" + prop + "\"", item);
             return;
         }
         target[last] = value;
     }
 
-    /**
-     * @template {Item} T
-     * @param {T[]} [originals]
-     * @param {any} [parent]
-     * @returns {Store<T>}
-     */
-    function createStore(originals = [], parent = undefined) {
-        /** @type {Map<string, T>} */
+    function createStore(originals, parent) {
+        if (originals === undefined) originals = [];
+        /** @type {Map<string, any>} */
         const items = new Map();
-        /** @type {Set<StoreListener>} */
+        /** @type {Set<Function>} */
         const listeners = new Set();
-        /** @type {any} */
         let storeParent = parent;
 
-        const emit = (event, item, key) => {
-            for (const fn of listeners) fn(event, item, key);
+        const emit = function (event, item, key) {
+            for (const fn of listeners) {
+                fn(event, item, key);
+            }
         };
 
-        /**
-         * @param {T} original
-         * @returns {T}
-         */
-        const makeReactive = (original) => {
-            /** @type {any} */
-            const target = { ...original };
-
-            /** @type {T} */
+        const makeReactive = function (original) {
+            const target = Object.assign({}, original);
             const proxy = new Proxy(target, {
-                get: (t, key, receiver) => {
+                get: function (t, key, receiver) {
                     if (key === "$parent") return storeParent;
                     return Reflect.get(t, key, receiver);
                 },
-                has: (t, key) => {
+                has: function (t, key) {
                     if (key === "$parent") return storeParent !== undefined;
                     return Reflect.has(t, key);
                 },
-                set: (t, key, value, receiver) => {
+                set: function (t, key, value, receiver) {
                     const ok = Reflect.set(t, key, wrap(value, proxy), receiver);
                     if (typeof key === "string") emit("change", proxy, key);
                     return ok;
                 },
             });
-
-            for (const key in target) target[key] = wrap(target[key], proxy);
+            for (const key in target) {
+                target[key] = wrap(target[key], proxy);
+            }
             return proxy;
         };
 
         const store = {
             isStore: true,
-            /**
-             * @param {T} original
-             * @returns {T}
-             */
-            add(original) {
-                if (!original.id) throw new Error(`${JSON.stringify(original)} has no "id" property`);
-                if (items.has(original.id)) throw new Error(`Duplicate id: ${original.id}`);
+            add: function (original) {
+                if (!original.id) throw new Error(JSON.stringify(original) + ' has no "id" property');
+                if (items.has(original.id)) throw new Error("Duplicate id: " + original.id);
                 const item = makeReactive(original);
                 items.set(original.id, item);
                 emit("add", item);
                 return item;
             },
-            /** @param {string} id */
-            get(id) {
+            get: function (id) {
                 return items.get(id);
             },
-            /** @param {string} id */
-            remove(id) {
+            remove: function (id) {
                 const item = items.get(id);
                 if (!item) return;
                 items.delete(id);
                 emit("remove", item);
             },
-            [Symbol.iterator]() {
+            [Symbol.iterator]: function () {
                 return items.values();
             },
-            /**
-             * @param {StoreListener} fn
-             * @returns {() => void} unsubscribe
-             */
-            subscribe(fn) {
+            subscribe: function (fn) {
                 listeners.add(fn);
-                return () => listeners.delete(fn);
+                return function () {
+                    listeners.delete(fn);
+                };
             },
         };
-        for (const original of originals) store.add(original);
+        for (let i = 0; i < originals.length; i++) {
+            store.add(originals[i]);
+        }
         return store;
     }
 
-    /**
-     * @template {Item} T
-     * @param {T[]} items
-     * @returns {Store<T>}
-     */
-    const store = (items = []) => createStore(items);
+    const store = function (items) {
+        if (items === undefined) items = [];
+        return createStore(items);
+    };
 
-    /**
-     * @param {string} expr
-     * @returns {(item: any, store: Store<any>, event: Event) => void}
-     */
-    const compile = (expr) => {
+    const compile = function (expr) {
         let fn = compiled.get(expr);
         if (!fn) {
             fn = new Function("item", "store", "event", expr);
             compiled.set(expr, fn);
         }
-        return /** @type {any} */ (fn);
+        return fn;
     };
 
-    /**
-     * @param {HTMLButtonElement} el
-     * @param {any} item
-     * @param {Store<any>} store
-     * @param {string} prop
-     */
     function bindButton(el, item, store, prop) {
-        const update = () => {};
+        const update = function () {};
         const run = compile(prop);
-        el.addEventListener("click", (event) => run(item, store, event));
-        return { prop, update };
+        el.addEventListener("click", function (event) {
+            run(item, store, event);
+        });
+        return { prop: prop, update: update };
     }
 
-    /**
-     * @param {HTMLInputElement} input
-     * @param {any} item
-     * @param {string} prop
-     */
     function bindCheckbox(input, item, prop) {
-        const update = () => {
+        const update = function () {
             input.checked = !!getProp(item, prop);
         };
         update();
-        input.addEventListener("change", () => {
+        input.addEventListener("change", function () {
             setProp(item, prop, input.checked);
         });
-        return { prop, update };
+        return { prop: prop, update: update };
     }
 
-    /**
-     * @param {HTMLInputElement} input
-     * @param {any} item
-     * @param {string} prop
-     */
     function bindInput(input, item, prop) {
         const isNumber = input.type === "number";
-        const update = () => {
-            const value = String(getProp(item, prop) ?? "");
+        const update = function () {
+            const value = String(getProp(item, prop) === undefined || getProp(item, prop) === null ? "" : getProp(item, prop));
             if (input.value !== value) input.value = value;
         };
         update();
-        input.addEventListener("input", () => {
+        input.addEventListener("input", function () {
             setProp(item, prop, isNumber ? Number(input.value) : input.value);
         });
-        return { prop, update };
+        return { prop: prop, update: update };
     }
 
-    /**
-     * @param {HTMLTextAreaElement | HTMLSelectElement} input
-     * @param {any} item
-     * @param {string} prop
-     */
     function bindValue(input, item, prop) {
-        const update = () => {
-            const value = String(getProp(item, prop) ?? "");
+        const update = function () {
+            const value = String(getProp(item, prop) === undefined || getProp(item, prop) === null ? "" : getProp(item, prop));
             if (input.value !== value) input.value = value;
         };
         update();
-        input.addEventListener("input", () => {
+        input.addEventListener("input", function () {
             setProp(item, prop, input.value);
         });
-        return { prop, update };
+        return { prop: prop, update: update };
     }
 
-    /**
-     * @param {HTMLElement} el
-     * @param {any} item
-     * @param {string} prop
-     */
     function bindText(el, item, prop) {
-        const update = () => {
-            el.textContent = getProp(item, prop) ?? "";
+        const update = function () {
+            el.textContent = getProp(item, prop) === undefined || getProp(item, prop) === null ? "" : getProp(item, prop);
         };
         update();
-        return { prop, update };
+        return { prop: prop, update: update };
     }
 
-    /**
-     * @template {Item} T
-     * @param {ParentNode} root
-     * @param {T} item
-     * @param {Store<T>} store
-     * @returns {{ prop: string, update: () => void }[]}
-     */
     function bindAll(root, item, store) {
-        return [...root.querySelectorAll("[mdl]")].map((el) => {
-            const prop = /** @type {string} */ (el.getAttribute("mdl"));
+        const nodes = root.querySelectorAll("[mdl]");
+        const result = [];
+        for (let i = 0; i < nodes.length; i++) {
+            const el = nodes[i];
+            const prop = el.getAttribute("mdl");
             if (el instanceof HTMLButtonElement) {
-                return bindButton(el, item, store, prop);
+                result.push(bindButton(el, item, store, prop));
+                continue;
             }
             if (el instanceof HTMLInputElement) {
-                return el.type === "checkbox"
-                    ? bindCheckbox(el, item, prop)
-                    : bindInput(el, item, prop);
+                if (el.type === "checkbox") {
+                    result.push(bindCheckbox(el, item, prop));
+                } else {
+                    result.push(bindInput(el, item, prop));
+                }
+                continue;
             }
             if (el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) {
-                return bindValue(el, item, prop);
+                result.push(bindValue(el, item, prop));
+                continue;
             }
-            return bindText(/** @type {HTMLElement} */ (el), item, prop);
-        });
+            result.push(bindText(el, item, prop));
+        }
+        return result;
     }
 
-    /**
-     * @template {Item} T
-     * Stamp out a template once per item and keep it in sync.
-     * @param {HTMLTemplateElement} template
-     * @param {Store<T>} store
-     */
     function mount(template, store) {
         const end = document.createComment("mdl");
         template.after(end);
-        /** @type {Map<string, { nodes: ChildNode[], binds: ReturnType<typeof bindAll> }>} */
         const rendered = new Map();
-        const add = (/** @type {any} */ item) => {
-            const frag = /** @type {DocumentFragment} */ (template.content.cloneNode(true));
+        const add = function (item) {
+            const frag = template.content.cloneNode(true);
             const binds = bindAll(frag, item, store);
             mdl.scan(frag, item);
-            const nodes = [...frag.childNodes];
+            const nodes = [];
+            const childNodes = frag.childNodes;
+            for (let i = 0; i < childNodes.length; i++) nodes.push(childNodes[i]);
             end.before(frag);
-            rendered.set(item.id, { nodes, binds });
+            rendered.set(item.id, { nodes: nodes, binds: binds });
         };
-        store.subscribe((event, item, key) => {
-            if (event === "add") add(item);
-            else if (event === "remove") {
-                rendered.get(item.id)?.nodes.forEach((n) => n.remove());
-                rendered.delete(item.id);
+        store.subscribe(function (event, item, key) {
+            if (event === "add") {
+                add(item);
+            } else if (event === "remove") {
+                const r = rendered.get(item.id);
+                if (r) {
+                    for (let i = 0; i < r.nodes.length; i++) r.nodes[i].remove();
+                    rendered.delete(item.id);
+                }
             } else {
-                rendered.get(item.id)?.binds.filter((b) => b.prop === key).forEach((b) => b.update());
+                const r = rendered.get(item.id);
+                if (r) {
+                    for (let i = 0; i < r.binds.length; i++) {
+                        if (r.binds[i].prop === key) r.binds[i].update();
+                    }
+                }
             }
         });
-        for (const item of store) {
-            add(item);
+        const it = store[Symbol.iterator]();
+        let res = it.next();
+        while (!res.done) {
+            add(res.value);
+            res = it.next();
         }
     }
 
-    /**
-     * Find unprocessed <template mdl="..."> elements and mount them.
-     * @param {ParentNode} [root]
-     * @param {any} [scope] item whose child stores take priority over the registry
-     */
-    function scan(root = document, scope = undefined) {
-        root.querySelectorAll("template[mdl]").forEach((el) => {
-            const template = /** @type {HTMLTemplateElement} */ (el);
-            if (template.dataset.mdlInit) return;
-            scope ??= (typeof window !== "undefined" ? window : undefined);
-            const name = /** @type {string} */ (template.getAttribute("mdl"));
-            const s = scope && scope[name] ? scope[name] : registry.get(name);
-            if (!s || !(s.isStore)) return;
+    function scan(root, scope) {
+        if (root === undefined) root = document;
+        const templates = root.querySelectorAll("template[mdl]");
+        for (let i = 0; i < templates.length; i++) {
+            const template = templates[i];
+            if (template.dataset.mdlInit) continue;
+            let s = scope;
+            if (!s) s = (typeof window !== "undefined") ? window : undefined;
+            const name = template.getAttribute("mdl");
+            let storeRef = undefined;
+            if (s && s[name]) storeRef = s[name];
+            else storeRef = registry.get(name);
+            if (!storeRef || !storeRef.isStore) continue;
             template.dataset.mdlInit = "1";
-            mount(template, s);
-        });
+            mount(template, storeRef);
+        }
     }
 
-    /**
-     * @param {*} stores
-     */
     function register(stores) {
-        for (const [name, s] of Object.entries(stores)) {
-            registry.set(name, s);
+        for (const name in stores) {
+            if (Object.prototype.hasOwnProperty.call(stores, name)) {
+                registry.set(name, stores[name]);
+            }
         }
         scan();
     }
 
-    /**
-     * @param {string} name
-     * @param {Store<any>} store
-     */
     function registerAs(name, s) {
         registry.set(name, s);
         scan();
@@ -346,13 +288,15 @@ var mdl = (function () {
         config: {
             errorOnUndefinedPropertyAccess: true,
         },
-        register,
-        registerAs,
-        scan,
-        createStore,
+        register: register,
+        registerAs: registerAs,
+        scan: scan,
+        createStore: createStore,
     };
 
-    const init = () => scan();
+    const init = function () {
+        scan();
+    };
     if (typeof document !== "undefined") {
         if (document.readyState === "loading") {
             document.addEventListener("DOMContentLoaded", init);
