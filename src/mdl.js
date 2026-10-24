@@ -150,18 +150,6 @@ var mdl = (function () {
         return store;
     }
 
-    // Keep Store as constructor-like function for compatibility
-    function Store(originals = [], parent = undefined) {
-        const s = createStore(originals, parent);
-        // Copy properties onto instance
-        Object.setPrototypeOf ? 0 : 0;
-        // Make it callable-like compatible
-        const inst = /** @type {any} */ (s);
-        inst.constructor = Store;
-        return s;
-    }
-    Store.prototype = {};
-
     /**
      * @template {Item} T
      * @param {T[]} items
@@ -373,20 +361,7 @@ var mdl = (function () {
         }
     }
 
-    // Expose helpers for compatibility
-    api.getProp = getProp;
-    api.setProp = setProp;
-    api.store = store;
-    api.Store = Store;
-
     return api;
 })();
 
-var store = mdl.createStore || mdl.store;
-var Store = mdl.Store || (function(items, parent){ return mdl.createStore(items, parent); });
-var getProp = mdl.getProp;
-var setProp = mdl.setProp;
-// For compatibility
-if (typeof globalThis !== "undefined") {
-    globalThis.__exports = { store: store, Store: Store, getProp: getProp, setProp: setProp };
-}
+var store = mdl.createStore;
