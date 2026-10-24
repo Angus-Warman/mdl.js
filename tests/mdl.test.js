@@ -51,10 +51,10 @@ test("getProp and setProp resolve dotted paths", () => {
     const project = projects.get("p1");
     const task = project.tasks.get("t1");
 
-    assert.equal(getProp(task, "text"), "Trash");
-    assert.equal(getProp(task, "$parent.name"), "Home");
+    assert.equal(task.$get("text"), "Trash");
+    assert.equal(task.$get("$parent.name"), "Home");
 
-    setProp(task, "$parent.name", "Renamed");
+    task.$set("$parent.name", "Renamed");
     assert.equal(project.name, "Renamed");
 });
 
@@ -65,8 +65,8 @@ test("missing binding properties log an error instead of writing", () => {
     ]);
     const task = projects.get("p1").tasks.get("t1");
 
-    assert.equal(getProp(task, "status"), undefined);
-    setProp(task, "missing", 1);
+    assert.equal(task.$get("status"), undefined);
+    task.$set("missing", 1);
 
     assert.equal(task.missing, undefined);
     assert.deepEqual(
