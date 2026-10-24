@@ -2,7 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-const source = fs.readFileSync(path.join(__dirname, "..", "mdl.js"), "utf8");
+const source = fs.readFileSync(path.join(__dirname, "..", "src", "mdl.js"), "utf8");
 
 function loadMdl() {
     const errors = [];
